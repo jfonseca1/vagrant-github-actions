@@ -1,5 +1,8 @@
 name: vagrant-up
-on: [push]
+on: 
+  workflow_call: # This allows the workflow to be called from other workflows
+  push: # Keep this to also allow direct triggering
+
 jobs:
   vagrant-up:
     runs-on: ubuntu-latest
@@ -15,6 +18,9 @@ jobs:
     - name: Install VirtualBox
       run: sudo apt-get install -y virtualbox
       
+    - name: Install Ansible
+      run: sudo apt-get install -y ansible
+      
     - name: Cache Vagrant boxes
       uses: actions/cache@v3
       with:
@@ -29,5 +35,14 @@ jobs:
     - name: Run vagrant up
       run: vagrant up
     
-    - name: ssh into box after boot
-      run: vagrant ssh -c "echo 'hello world!'"
+    - name: SSH into nodes
+      run: |
+        if grep -q "k8s-master" Vagrantfile; then
+          # For Kubernetes cluster
+          vagrant ssh k8s-master -c "echo 'Kubernetes master node is up!'"
+          vagrant ssh node-1 -c "echo 'Kubernetes worker node 1 is up!'" || true
+          vagrant ssh node-2 -c "echo 'Kubernetes worker node 2 is up!'" || true
+        else
+          # Default behavior
+          vagrant ssh -c "echo 'hello world!'"
+        fi
